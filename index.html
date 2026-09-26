@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TrustChain Pro | Enterprise Defense Blockchain Platform (SIH26125)</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+        :root {
+            --bg-base: #020617;
+            --bg-panel: #0f172a;
+            --bg-card: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent-nft: #c084fc;
+            --accent-access: #38bdf8;
+            --alert-success: #10b981;
+            --alert-danger: #f43f5e;
+            --border: #334155;
+            --border-highlight: #475569;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg-base); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+
+        /* Left Panel */
+        .sidebar { width: 440px; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 10; box-shadow: 4px 0 24px rgba(0,0,0,0.4); }
+        .header { padding: 24px; border-bottom: 1px solid var(--border); background: linear-gradient(180deg, rgba(30,41,59,0.5) 0%, rgba(15,23,42,1) 100%); }
+        .header-top { display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 1.25rem; font-weight: 700; color: #fff; }
+        .header-sub { color: var(--text-muted); font-size: 0.8rem; margin-top: 6px; display: flex; align-items: center; gap: 8px; }
+        .pulse { width: 8px; height: 8px; background: var(--alert-success); border-radius: 50%; box-shadow: 0 0 10px var(--alert-success); }
+
+        .tabs { display: flex; border-bottom: 1px solid var(--border); background: var(--bg-panel); }
+        .tab { flex: 1; padding: 14px 10px; text-align: center; cursor: pointer; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); transition: all 0.2s ease; border-bottom: 2px solid transparent; }
+        .tab.active[data-target="mint-flow"] { color: var(--accent-nft); border-bottom-color: var(--accent-nft); background: rgba(192,132,252,0.06); }
+        .tab.active[data-target="access-flow"] { color: var(--accent-access); border-bottom-color: var(--accent-access); background: rgba(56,189,248,0.06); }
+
+        .forms { padding: 24px; flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; }
+        .flow-container { display: none; flex-direction: column; gap: 18px; }
+        .flow-container.active { display: flex; }
+        .flow-header { border-left: 3px solid; padding-left: 10px; margin-bottom: 4px; }
+        .flow-header.mint { border-color: var(--accent-nft); }
+        .flow-header.access { border-color: var(--accent-access); }
+        .flow-header h3 { font-size: 0.95rem; font-weight: 600; }
+        .flow-header p { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+        .input-group { display: flex; flex-direction: column; gap: 6px; }
+        label { font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em; }
+        select, input { background: var(--bg-base); border: 1px solid var(--border); color: var(--text-main); padding: 11px 12px; border-radius: 6px; font-family: inherit; font-size: 0.85rem; }
+        select:focus, input:focus { outline: none; border-color: var(--border-highlight); }
+
+        .btn { border: none; padding: 13px; border-radius: 6px; font-weight: 600; font-size: 0.9rem; cursor: pointer; color: #fff; transition: all 0.2s; display: flex; justify-content: center; align-items: center; margin-top: 4px; }
+        .btn-mint { background: linear-gradient(135deg, #9333ea, #c084fc); }
+        .btn-mint:hover { box-shadow: 0 0 16px rgba(192,132,252,0.4); opacity: 0.95; }
+        .btn-access { background: linear-gradient(135deg, #0284c7, #38bdf8); color: #041324; }
+        .btn-access:hover { box-shadow: 0 0 16px rgba(56,189,248,0.4); opacity: 0.95; }
+
+        /* Right Panel */
+        .main { flex: 1; display: flex; flex-direction: column; background: var(--bg-base); overflow: hidden; }
+        .console-container { background: #000; border-bottom: 1px solid var(--border); height: 190px; display: flex; flex-direction: column; }
+        .console-header { padding: 8px 16px; background: #090d16; border-bottom: 1px solid #1e293b; font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; display: flex; justify-content: space-between; }
+        .console { padding: 12px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 5px; flex: 1; }
+        .log-line { font-size: 0.75rem; color: #a3a3a3; line-height: 1.4; }
+        .log-time { color: #525252; margin-right: 10px; }
+        .log-sys { color: #60a5fa; }
+        .log-ok { color: #34d399; }
+        .log-fail { color: #f87171; }
+
+        .ledger-view { padding: 20px 24px; flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; }
+        .status-banner { display: flex; justify-content: space-between; align-items: center; padding: 16px 20px; border-radius: 8px; border: 1px solid; background: var(--bg-panel); transition: all 0.3s ease; }
+        .banner-ok { border-color: var(--alert-success); box-shadow: 0 0 20px rgba(16,185,129,0.08); }
+        .banner-err { border-color: var(--alert-danger); box-shadow: 0 0 20px rgba(244,63,94,0.12); background: rgba(244,63,94,0.05); }
+
+        .nodes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; flex: 1; min-height: 0; }
+        .node-col { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto; }
+        .node-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+        .node-head h4 { font-size: 0.85rem; font-weight: 600; color: #fff; }
+
+        .block-list { display: flex; flex-direction: column; gap: 10px; }
+        .block { background: var(--bg-card); padding: 12px 14px; border-radius: 6px; border-left: 3px solid transparent; font-size: 0.75rem; display: flex; flex-direction: column; gap: 6px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+        .block.mint { border-left: 3px solid var(--accent-nft); }
+        .block.access { border-left: 3px solid var(--accent-access); }
+        .block.tamper { border: 1px solid var(--alert-danger) !important; border-left: 3px solid var(--alert-danger) !important; background: rgba(244,63,94,0.06); }
+
+        .block-header { display: flex; justify-content: space-between; padding-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .data-row { display: flex; justify-content: space-between; gap: 8px; align-items: flex-start; }
+        .data-lbl { color: var(--text-muted); font-size: 0.7rem; margin-top: 2px; }
+        .data-val { color: var(--text-main); text-align: right; word-break: break-all; }
+        .hash-str { color: var(--alert-success); }
+        
+        /* New Tampered Hash Display */
+        .hash-mismatch-container { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+        .hash-stored { color: var(--text-muted); text-decoration: line-through; font-size: 0.65rem; }
+        .hash-actual { color: var(--alert-danger); font-weight: bold; }
+
+        .btn-hack { background: rgba(244,63,94,0.1); border: 1px dashed var(--alert-danger); color: var(--alert-danger); padding: 6px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 0.7rem; transition: 0.2s; margin-top: 4px; }
+        .btn-hack:hover { background: var(--alert-danger); color: #fff; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="header">
+            <div class="header-top">
+                <h1>TrustChain Pro</h1>
+                <span class="badge" style="background: rgba(56,189,248,0.1); color: var(--accent-access); border: 1px solid rgba(56,189,248,0.2);">BEL PS-SIH26125</span>
+            </div>
+            <div class="header-sub">
+                <div class="pulse"></div>
+                <span>Permissioned Node-Based Smart Contract Gateway</span>
+            </div>
+        </div>
+
+        <div class="tabs">
+            <div class="tab active" data-target="mint-flow">1. Enterprise NFT Minting</div>
+            <div class="tab" data-target="access-flow">2. Hybrid Access Gate</div>
+        </div>
+
+        <div class="forms">
+            <div class="flow-container active" id="mint-flow">
+                <div class="flow-header mint">
+                    <h3 style="color: var(--accent-nft);">Asset Tokenization Smart Contract</h3>
+                    <p>Enforces Admin-only minting &amp; cryptographically binds NFTs to DIDs</p>
+                </div>
+                <div class="input-group">
+                    <label>Initiator Cryptographic Identity (DID &amp; RBAC)</label>
+                    <select id="mintDid">
+                        <option value="did:bel:admin-01">did:bel:admin-01 (Role: Admin) — AUTHORIZED</option>
+                        <option value="did:bel:user-99">did:bel:user-99 (Role: User) — WILL FAIL</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Target Defense Asset Data</label>
+                    <input type="text" id="mintAsset" value="BEL-RADAR-AESA-MK2-SCHEMATICS" />
+                </div>
+                <div class="input-group">
+                    <label>Classification Level</label>
+                    <select id="mintClass">
+                        <option value="TOP SECRET / DEFENSE">TOP SECRET // DEFENSE LEVEL 4</option>
+                        <option value="CONFIDENTIAL">CONFIDENTIAL // STRATEGIC</option>
+                    </select>
+                </div>
+                <button class="btn btn-mint" onclick="triggerMintContract()">Execute Minting Contract</button>
+            </div>
+
+            <div class="flow-container" id="access-flow">
+                <div class="flow-header access">
+                    <h3 style="color: var(--accent-access);">Hybrid Access Gatekeeper</h3>
+                    <p>RBAC Clearance Verification + ABAC Zero-Trust Context Check</p>
+                </div>
+                <div class="input-group">
+                    <label>Target Enterprise NFT</label>
+                    <input type="text" id="accessNftTarget" class="mono" value="[Will automatically sync to latest minted NFT]" readonly style="opacity: 0.8;" />
+                </div>
+                <div class="input-group">
+                    <label>Requester Identity (RBAC Clearance)</label>
+                    <select id="accessDid">
+                        <option value="did:bel:mgr-42">did:bel:mgr-42 (Role: Manager) — PASS</option>
+                        <option value="did:cag:auditor-07">did:cag:auditor-07 (Role: Auditor) — PASS</option>
+                        <option value="did:bel:user-99">did:bel:user-99 (Role: User) — REVERTED</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Network Context (ABAC Zero-Trust Evaluation)</label>
+                    <select id="accessIp">
+                        <option value="10.0.8.22 [SECURE-BEL-INTRANET]">10.0.8.22 (Secure BEL Intranet) — PASS</option>
+                        <option value="182.74.12.90 [PUBLIC-INTERNET]">182.74.12.90 (Public Internet / VPN) — REVERTED</option>
+                    </select>
+                </div>
+                <button class="btn btn-access" onclick="triggerAccessContract()">Execute Access Request</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="console-container">
+            <div class="console-header">
+                <span>Node.js Smart Contract Execution Engine (Chaincode Logs)</span>
+                <span class="mono" style="color: var(--accent-access);">SHA-256 Engine: ACTIVE</span>
+            </div>
+            <div class="console mono" id="terminal">
+                <div class="log-line"><span class="log-time">00:00:00.000</span><span class="log-sys">[SYSTEM] TrustChain Node.js Validator Active. 3 Sovereign Nodes Synchronized.</span></div>
+            </div>
+        </div>
+
+        <div class="ledger-view">
+            <div id="syncBanner" class="status-banner banner-ok">
+                <div>
+                    <h3 id="bannerTitle" style="color: var(--alert-success); margin-bottom: 4px; font-size: 1.05rem;">Distributed Consensus: Synchronized</h3>
+                    <span id="bannerSub" style="color: var(--text-muted); font-size: 0.8rem;">All sovereign nodes mathematically match. Immutable ledger state verified.</span>
+                </div>
+                <span id="bannerBadge" class="badge" style="background: var(--alert-success); color: #000;">Consensus 3/3 Valid</span>
+            </div>
+
+            <div class="nodes-grid">
+                <div class="node-col">
+                    <div class="node-head">
+                        <h4>Node 1: BEL Primary</h4>
+                        <span class="badge" style="background: rgba(255,255,255,0.06); border: 1px solid var(--border);">Defense Dept</span>
+                    </div>
+                    <div class="block-list" id="chain-n1"></div>
+                </div>
+                <div class="node-col">
+                    <div class="node-head">
+                        <h4>Node 2: CAG Audit</h4>
+                        <span class="badge" style="background: rgba(255,255,255,0.06); border: 1px solid var(--border);">Gov Oversight</span>
+                    </div>
+                    <div class="block-list" id="chain-n2"></div>
+                </div>
+                <div class="node-col">
+                    <div class="node-head">
+                        <h4>Node 3: CERT-In</h4>
+                        <span class="badge" style="background: rgba(255,255,255,0.06); border: 1px solid var(--border);">Cyber Forensics</span>
+                    </div>
+                    <div class="block-list" id="chain-n3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    document.querySelectorAll('.tab').forEach(t => {
+        t.addEventListener('click', () => {
+            document.querySelectorAll('.tab, .flow-container').forEach(e => e.classList.remove('active'));
+            t.classList.add('active');
+            document.getElementById(t.dataset.target).classList.add('active');
+        });
+    });
+
+    function log(msg, type="sys") {
+        const term = document.getElementById('terminal');
+        const time = new Date().toISOString().split('T')[1].replace('Z', '');
+        let color = type === 'ok' ? 'log-ok' : (type === 'fail' ? 'log-fail' : 'log-sys');
+        term.innerHTML += `<div class="log-line"><span class="log-time">${time}</span><span class="${color}">${msg}</span></div>`;
+        term.scrollTop = term.scrollHeight;
+    }
+
+    const SECRET_KEY = "BEL_DEFENSE_HSM_SIGNING_KEY";
+    let currentTokenId = "GENESIS_NFT_000";
+
+    class Block {
+        constructor(index, type, did, assetRef, metadata, prevHash) {
+            this.index = index; this.type = type; this.did = did; this.assetRef = assetRef; this.metadata = metadata; this.prevHash = prevHash;
+            this.timestamp = new Date().toISOString().split('T')[1].slice(0, 8);
+            this.signature = CryptoJS.HmacSHA256(did + assetRef, SECRET_KEY).toString(CryptoJS.enc.Hex).substring(0, 16);
+            this.hash = this.calculateHash();
+        }
+        calculateHash() {
+            return CryptoJS.SHA256(this.index + this.type + this.did + this.assetRef + this.metadata + this.prevHash + this.signature).toString(CryptoJS.enc.Hex);
+        }
+    }
+
+    const network = {
+        n1: [new Block(0, "GENESIS", "SYSTEM", "GENESIS_ROOT", "LOCAL", "00000000000000000000000000000000")],
+        n2: [new Block(0, "GENESIS", "SYSTEM", "GENESIS_ROOT", "LOCAL", "00000000000000000000000000000000")],
+        n3: [new Block(0, "GENESIS", "SYSTEM", "GENESIS_ROOT", "LOCAL", "00000000000000000000000000000000")]
+    };
+
+    function verifyNodeIntegrity(chain) {
+        for (let i = 1; i < chain.length; i++) {
+            chain[i].calculateHash = Block.prototype.calculateHash;
+            if (chain[i].hash !== chain[i].calculateHash() || chain[i].prevHash !== chain[i - 1].hash) return false;
+        }
+        return true;
+    }
+
+    function triggerMintContract() {
+        const did = document.getElementById('mintDid').value;
+        const asset = document.getElementById('mintAsset').value;
+        const clearance = document.getElementById('mintClass').value;
+        log(`[SMART CONTRACT] Invoking mintEnterpriseNFT()...`);
+
+        setTimeout(() => {
+            if (!did.includes("admin")) { log(`[REVERTED] RBAC Violation: Identity lacks 'Admin' role clearance.`, 'fail'); return; }
+            const rawTokenHash = CryptoJS.SHA256(asset + clearance + Date.now()).toString(CryptoJS.enc.Hex);
+            currentTokenId = "NFT-" + rawTokenHash.substring(0, 8).toUpperCase();
+            document.getElementById('accessNftTarget').value = currentTokenId;
+            log(`[AUTH] RBAC Clearance Verified. Unique NFT Minted: ${currentTokenId}`, 'ok');
+            commitBlock('NFT_MINT', did, currentTokenId, asset);
+        }, 500);
+    }
+
+    function triggerAccessContract() {
+        const did = document.getElementById('accessDid').value;
+        const ip = document.getElementById('accessIp').value;
+        log(`[SMART CONTRACT] Invoking evaluateAccessRequest() for target: ${currentTokenId}...`);
+
+        setTimeout(() => {
+            if (did.includes("user")) { log(`[REVERTED] RBAC Failure: Standard User role lacks clearance.`, 'fail'); return; }
+            if (ip.includes("PUBLIC")) { log(`[REVERTED] ABAC Failure: Untrusted network perimeter detected.`, 'fail'); return; }
+            log(`[GRANTED] Cryptographic read receipt recorded to ledger.`, 'ok');
+            commitBlock('NFT_ACCESS', did, currentTokenId, ip.split(' ')[0]);
+        }, 600);
+    }
+
+    function commitBlock(type, did, assetRef, metadata) {
+        setTimeout(() => {
+            const prev = network.n1[network.n1.length - 1].hash;
+            const newBlock = new Block(network.n1.length, type, did, assetRef, metadata, prev);
+            network.n1.push(newBlock); network.n2.push(JSON.parse(JSON.stringify(newBlock))); network.n3.push(JSON.parse(JSON.stringify(newBlock)));
+            renderLedger();
+            log(`[CONSENSUS] Block #${newBlock.index} synchronized across 3/3 sovereign nodes.`, 'ok');
+        }, 300);
+    }
+
+    function simulateTamper(blockIndex) {
+        log(`[CRITICAL] Rogue DB Admin executing unauthenticated row update on Node 1...`, 'fail');
+        network.n1[blockIndex].assetRef = "COMPROMISED_RADAR_EXPLOIT";
+        renderLedger();
+    }
+
+    function renderLedger() {
+        ['n1', 'n2', 'n3'].forEach(n => {
+            const container = document.getElementById(`chain-${n}`);
+            container.innerHTML = [...network[n]].reverse().map((b, revIdx) => {
+                const actIdx = network[n].length - 1 - revIdx;
+                b.calculateHash = Block.prototype.calculateHash;
+                
+                const expectedHash = b.hash;
+                const actualHash = b.calculateHash();
+                const isTampered = expectedHash !== actualHash || (actIdx > 0 && b.prevHash !== network[n][actIdx - 1].hash);
+                const blockColor = isTampered ? 'var(--alert-danger)' : (b.type === 'NFT_MINT' ? 'var(--accent-nft)' : 'var(--accent-access)');
+
+                let hashUI = `<span class="data-val mono hash-str">${expectedHash.substring(0, 10)}...</span>`;
+                if (isTampered && expectedHash !== actualHash) {
+                    hashUI = `
+                        <div class="hash-mismatch-container">
+                            <span class="hash-stored">STORED: ${expectedHash.substring(0,10)}...</span>
+                            <span class="hash-actual">ACTUAL: ${actualHash.substring(0,10)}...</span>
+                        </div>
+                    `;
+                }
+
+                return `
+                <div class="block ${isTampered ? 'tamper' : (b.type === 'NFT_MINT' ? 'mint' : 'access')}">
+                    <div class="block-header">
+                        <strong style="color: ${blockColor}">[${b.type}] Block #${b.index}</strong>
+                        <span class="mono" style="color: var(--text-muted); font-size: 0.7rem;">${b.timestamp}</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-lbl mono">OWNER</span>
+                        <span class="data-val mono">${b.did.split(':')[2]}</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-lbl mono">ASSET</span>
+                        <span class="data-val mono" style="color: #fff;">${b.assetRef}</span>
+                    </div>
+                    <div class="data-row">
+                        <span class="data-lbl mono">HASH VERIFY</span>
+                        ${hashUI}
+                    </div>
+                    ${(n === 'n1' && actIdx > 0) ? `<button class="btn-hack" onclick="simulateTamper(${actIdx})">Simulate DB Tampering</button>` : ''}
+                </div>`;
+            }).join('');
+        });
+
+        const h1 = network.n1[network.n1.length - 1].hash;
+        const h2 = network.n2[network.n2.length - 1].hash;
+        const h3 = network.n3[network.n3.length - 1].hash;
+
+        const banner = document.getElementById('syncBanner');
+        const title = document.getElementById('bannerTitle');
+        const sub = document.getElementById('bannerSub');
+        const badge = document.getElementById('bannerBadge');
+
+        if (h1 === h2 && h2 === h3 && verifyNodeIntegrity(network.n1)) {
+            banner.className = 'status-banner banner-ok';
+            title.innerText = "Distributed Consensus: Synchronized"; title.style.color = "var(--alert-success)";
+            sub.innerText = "All sovereign nodes mathematically match. Immutable ledger state verified.";
+            badge.style.background = "var(--alert-success)"; badge.innerText = "Consensus 3/3 Valid";
+            badge.style.border = "none"; badge.style.color = "#000";
+        } else {
+            banner.className = 'status-banner banner-err';
+            title.innerText = "SIEM FORENSIC ALERT: Consensus Partition Mismatch"; title.style.color = "var(--alert-danger)";
+            sub.innerText = "Hash divergence detected on Node 1 (BEL). CAG & CERT-In validators isolated the tampered state.";
+            badge.style.background = "transparent"; badge.style.border = "1px solid var(--alert-danger)";
+            badge.innerText = "Network Partitioned"; badge.style.color = "var(--alert-danger)";
+            log(`[SIEM FORENSIC ALERT] Node 1 hash diverged from Node 2 & 3. Tampered payload rejected!`, 'fail');
+        }
+    }
+    renderLedger();
+</script>
+</body>
+</html>
